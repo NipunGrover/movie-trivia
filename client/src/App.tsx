@@ -5,6 +5,10 @@ import { useState } from "react";
 const VITE_LOGO = `/images/vite.svg`;
 const REACT_LOGO = `/images/react.svg`;
 
+// TODO
+// IN PACAKGE JSON, there is still postcss plugin which is supposed to be a dev
+// dependency, but it is in the dependencies section. FIX it later
+
 /**
  * The main application component.
  */
