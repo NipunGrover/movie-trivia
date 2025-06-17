@@ -20,9 +20,8 @@ import eslintPerfectionist from "eslint-plugin-perfectionist";
 // import jestPackage from "jest/package.json" with { type: "json" };
 import vitest from "@vitest/eslint-plugin";
 
-
-  // Note: If you are still using tailwind v3 and want to use the ESLint plugin, add this to the package.json
-  // "eslint-plugin-tailwindcss": "^3.17.5",
+// Note: If you are still using tailwind v3 and want to use the ESLint plugin, add this to the package.json
+// "eslint-plugin-tailwindcss": "^3.17.5",
 
 // Core Node Configuration
 const coreConfig = tseslint.config({
