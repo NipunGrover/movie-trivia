@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+/* For global resets, Tailwind imports, base styles (fonts, body, html, etc.)*/
 @theme {
   --text-xs: 0.75rem;
   --text-xs--line-height: 1rem;
