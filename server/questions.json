@@ -1,0 +1,17 @@
+[
+  {
+    "question": "Who directed Inception?",
+    "choices": [
+      "Christopher Nolan",
+      "Steven Spielberg",
+      "James Cameron",
+      "David Fincher"
+    ],
+    "correct": "Christopher Nolan"
+  },
+  {
+    "question": "Which year was The Matrix released?",
+    "choices": ["1997", "1999", "2001", "2003"],
+    "correct": "1999"
+  }
+]
