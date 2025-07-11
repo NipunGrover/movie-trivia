@@ -1,7 +1,8 @@
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
+
+import { defineConfig } from "vite";
+import { resolve } from "path";
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -10,9 +11,13 @@ export default defineConfig({
       target: "react",
       autoCodeSplitting: true
     }),
-    react(),
     tailwindcss()
   ],
+  resolve: {
+    alias: {
+      "@": resolve(__dirname, "src")
+    }
+  },
   build: {
     outDir: "./dist",
     target: ["chrome90", "edge90", "es2022", "firefox89", "safari15"]

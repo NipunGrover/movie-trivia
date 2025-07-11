@@ -1,5 +1,5 @@
 import { createRootRoute, createRoute } from "@tanstack/react-router";
-import { Root } from "./components/Root";
+import { Root } from "./Root";
 import JoinRoomPage from "./pages/JoinRoomPage";
 import GamePage from "./pages/GamePage";
 
@@ -9,13 +9,13 @@ const rootRoute = createRootRoute({
 
 const joinRoomPageRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/",
+  path: "/join",
   component: JoinRoomPage
 });
 
 const gamePageRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/game",
+  path: "/",
   component: GamePage
 });
 

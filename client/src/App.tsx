@@ -1,6 +1,6 @@
 import { Outlet } from "@tanstack/react-router";
 
-export const Root = () => {
+const App = () => {
   return (
     <div>
       {/* <Header/> */}
@@ -9,3 +9,5 @@ export const Root = () => {
     </div>
   );
 };
+
+export default App;
