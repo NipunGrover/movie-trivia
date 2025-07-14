@@ -11,6 +11,7 @@
     "test": "vitest run --coverage"
   },
   "dependencies": {
+    "@radix-ui/react-slot": "^1.2.3",
     "@tailwindcss/postcss": "^4.1.10",
     "@tanstack/react-query": "^5.82.0",
     "@tanstack/react-router": "^1.121.21",
