@@ -2,20 +2,24 @@ import "@/index.css";
 import { Lock, Sparkles, Gamepad2Icon } from "lucide-react";
 import { Card, CardTitle } from "@/components/ui/card";
 import { useState } from "react";
+import { useParams } from "@tanstack/react-router";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 export default function JoinRoomPage() {
-  const [roomCode, setRoomCode] = useState<string>("");
+  const params = useParams({ strict: false });
+
+  // I am grabbing roomCode from the roomId from params if there is one
+  const [roomCode, setRoomCode] = useState<string>(params.roomId || "");
   const [cardHovered, setCardHovered] = useState(false);
   const [buttonHovered, setButtonHovered] = useState(false);
 
   return (
     <div className="">
       {/* background */}
-      <div className="from-room-purple to-room-cyan relative min-h-screen place-items-center overflow-hidden bg-gradient-to-br via-purple-700 p-4 text-center">
+      <div className="from-room-purple to-room-cyan relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br via-purple-700 p-4 text-center">
         {/* upper + lower part */}
-        <div className="flex min-h-screen flex-col items-center gap-y-12">
+        <div className="flex w-full flex-col items-center justify-center gap-y-12">
           {/* Upper part */}
           <div className="flex flex-col items-center justify-center text-center">
             {/* Title */}
@@ -47,7 +51,7 @@ export default function JoinRoomPage() {
               <Input
                 placeholder="Enter room code (e.g., ABC123)"
                 value={roomCode}
-                onChange={e => setRoomCode(e.target.value.toUpperCase())}
+                onChange={e => setRoomCode(e.target.value)}
                 className="letter-spacing max-w-60 border-white/30 bg-white/20 py-6 text-center font-mono text-lg text-white placeholder:text-white/50"
                 maxLength={6}
               />
@@ -55,7 +59,7 @@ export default function JoinRoomPage() {
                 onClick={() => {}}
                 onMouseEnter={() => setButtonHovered(true)}
                 onMouseLeave={() => setButtonHovered(false)}
-                className="from-room-purple to-room-purple-light hover:from-room-purple-light hover:to-room-purple group w-full bg-gradient-to-r py-6 text-lg font-semibold text-white shadow-lg transition-all duration-300 hover:shadow-xl">
+                className="hover: from-room-purple to-room-purple-light hover:from-room-purple-light hover:to-room-purple group w-full bg-gradient-to-r py-6 text-lg font-semibold text-white shadow-lg transition-all duration-300 hover:shadow-xl">
                 Join Room
               </Button>
             </div>

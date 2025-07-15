@@ -1,10 +1,47 @@
 import express from "express";
 import http from "http";
 import { Server } from "socket.io";
+import cors from "cors";
+import { nanoid } from "nanoid"; // Importing nanoid to generate unique room IDs
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "http://localhost:5173" } });
+
+app.use(cors({ origin: "http://localhost:5173" }));
+app.use(express.json());
+
+// In-memory rooms store
+const rooms = {};
+
+app.post("/create-room", (req, res) => {
+  const roomId = nanoid(6);
+
+  // This threw me off because conventionally i've only ever
+  // seen arr[index] but, this is basically obj[key] and not arr[index]
+  // rooms is an object mapping room‑IDs (strings) -> room data. for example:
+  /*const rooms = {
+  "aB3dE1" : {
+    players: {
+      "XyZ123": { name: "Alice", score: 0 },
+      "QwR456": { name: "Bob",   score: 0 }
+    },
+    round: 0
+  },
+  "fG7hJ8": {
+    players: {somePlayerId: { name: "Charlie", score: 0 }},
+    round: 2
+  }
+  rooms is the object, key is roomId, and it contains player and round, player is an object
+  with socket id as key and player data as value, round is a number.
+  so lets say you want to access XyZ123's score in room aB3dE1, you would do:
+  rooms["aB3dE1"].players["XyZ123"].score; 
+  very similar to json, but in javascript object notation.
+} */
+
+  rooms[roomId] = { players: {}, round: 0 };
+  res.json({ roomId });
+});
 
 app.get("/", (req, res) => {
   res.send(
@@ -14,13 +51,20 @@ app.get("/", (req, res) => {
 
 io.on("connection", (socket) => {
   console.log("🔌 Client connected:", socket.id);
-  socket.emit("welcome", "Welcome! You’re connected fine shyt.");
+  socket.on("joinRoom", ({ roomId, playerName }) => {
+    if (!rooms[roomId]) {
+      return socket.emit("error", "Room does not exist");
+    }
+    socket.join(roomId);
+    rooms[roomId].players[socket.id] = { name: playerName, score: 0 };
+    io.to(roomId).emit("roomUpdate", rooms[roomId].players);
 
-  socket.on("disconnect", () => {
-    console.log(
-      `Client bounced, no cap. Server's just chillin' solo now.`,
-      socket.id
-    );
+    // You have to use Object.keys to get the length of the players object
+    // since players is an object, not an array, it doesn't have a length property.
+    // Object.keys grabs the keys of the object and returns them as an array and array has a length property.
+    if (Object.keys(rooms[roomId].players).length === 2) {
+      startRound(roomId);
+    }
   });
 });
 
