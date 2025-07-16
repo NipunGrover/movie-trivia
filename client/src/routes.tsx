@@ -31,10 +31,17 @@ const gamePageRoute = createRoute({
   component: GamePage
 });
 
+const gameRoomRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/game/$roomId",
+  component: GamePage
+});
+
 export const routeTree = rootRoute.addChildren([
   joinRoomPageRoute,
   joinRoomWithIdRoute,
   gamePageRoute,
+  gameRoomRoute,
   createRoomRoute
 ]);
 

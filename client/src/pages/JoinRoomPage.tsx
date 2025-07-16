@@ -1,18 +1,34 @@
 import "@/index.css";
 import { Lock, Sparkles, Gamepad2Icon } from "lucide-react";
 import { Card, CardTitle } from "@/components/ui/card";
-import { useState } from "react";
-import { useParams } from "@tanstack/react-router";
+import { useRef, useState } from "react";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { io } from "socket.io-client";
+import { usePlayerStore } from "@/stores/usePlayerStore";
 
 export default function JoinRoomPage() {
   const params = useParams({ strict: false });
+  const setPlayerName = usePlayerStore(s => s.setPlayerName);
+
+  /* Room States */
 
   // I am grabbing roomCode from the roomId from params if there is one
   const [roomCode, setRoomCode] = useState<string>(params.roomId || "");
+  const [name, setName] = useState("");
+  const navigate = useNavigate();
+  const socketRef = useRef<any>(null);
+
+  /* Hover states */
   const [cardHovered, setCardHovered] = useState(false);
   const [buttonHovered, setButtonHovered] = useState(false);
+
+  const handleJoin = () => {
+    socketRef.current = io("http://localhost:3000");
+    socketRef.current.emit("joinRoom", { roomId: roomCode, playerName: name });
+    navigate({ to: `/game/${roomCode}` });
+  };
 
   return (
     <div className="">
@@ -56,7 +72,10 @@ export default function JoinRoomPage() {
                 maxLength={6}
               />
               <Button
-                onClick={() => {}}
+                onClick={() => {
+                  handleJoin();
+                  setPlayerName(name);
+                }}
                 onMouseEnter={() => setButtonHovered(true)}
                 onMouseLeave={() => setButtonHovered(false)}
                 className="hover: from-room-purple to-room-purple-light hover:from-room-purple-light hover:to-room-purple group w-full bg-gradient-to-r py-6 text-lg font-semibold text-white shadow-lg transition-all duration-300 hover:shadow-xl">
