@@ -39,7 +39,13 @@ app.post("/create-room", (req, res) => {
   very similar to json, but in javascript object notation.
 } */
 
-  rooms[roomId] = { players: {}, round: 0 };
+  rooms[roomId] = {
+    players: {},
+    round: 0,
+    hostId: null, // will set when host joins
+    maxPlayers: 10, // or pull from req.body
+    hasStarted: false,
+  };
   res.json({ roomId });
 });
 
@@ -49,22 +55,34 @@ app.get("/", (req, res) => {
   );
 });
 
+// List all active rooms
+app.get("/rooms", (req, res) => {
+  res.json({ rooms: Object.keys(rooms) });
+});
+
 io.on("connection", (socket) => {
   console.log("🔌 Client connected:", socket.id);
   socket.on("joinRoom", ({ roomId, playerName }) => {
-    if (!rooms[roomId]) {
+    const room = rooms[roomId];
+
+    if (!room) {
       return socket.emit("error", "Room does not exist");
     }
-    socket.join(roomId);
-    rooms[roomId].players[socket.id] = { name: playerName, score: 0 };
-    io.to(roomId).emit("roomUpdate", rooms[roomId].players);
 
+    // make the first player to join the room the host
     // You have to use Object.keys to get the length of the players object
     // since players is an object, not an array, it doesn't have a length property.
     // Object.keys grabs the keys of the object and returns them as an array and array has a length property.
-    if (Object.keys(rooms[roomId].players).length === 2) {
-      startRound(roomId);
+    if (Object.keys(room.players).length === 0) {
+      room.hostId = socket.id;
     }
+
+    socket.join(roomId);
+    room.players[socket.id] = { name: playerName, score: 0 };
+    io.to(roomId).emit("roomUpdate", {
+      players: room.players,
+      hostId: room.hostId,
+    });
   });
 });
 

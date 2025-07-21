@@ -1,11 +1,10 @@
 import "@/index.css";
 import { Lock, Sparkles, Gamepad2Icon } from "lucide-react";
 import { Card, CardTitle } from "@/components/ui/card";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { io } from "socket.io-client";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 
 export default function JoinRoomPage() {
@@ -18,16 +17,14 @@ export default function JoinRoomPage() {
   const [roomCode, setRoomCode] = useState<string>(params.roomId || "");
   const [name, setName] = useState("");
   const navigate = useNavigate();
-  const socketRef = useRef<any>(null);
 
   /* Hover states */
   const [cardHovered, setCardHovered] = useState(false);
   const [buttonHovered, setButtonHovered] = useState(false);
 
   const handleJoin = () => {
-    socketRef.current = io("http://localhost:3000");
-    socketRef.current.emit("joinRoom", { roomId: roomCode, playerName: name });
-    navigate({ to: `/game/${roomCode}` });
+    setPlayerName(name);
+    navigate({ to: "/waiting/$roomId", params: { roomId: roomCode } });
   };
 
   return (
@@ -35,7 +32,7 @@ export default function JoinRoomPage() {
       {/* background */}
       <div className="from-room-purple to-room-cyan relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br via-purple-700 p-4 text-center">
         {/* upper + lower part */}
-        <div className="flex w-full flex-col items-center justify-center gap-y-12">
+        <div className="xs:gap-y-20 lg:gap-y020 flex w-full flex-col items-center justify-center gap-y-6">
           {/* Upper part */}
           <div className="flex flex-col items-center justify-center text-center">
             {/* Title */}
@@ -52,7 +49,7 @@ export default function JoinRoomPage() {
           {/* Lower part */}
           {/* Blurred card  */}
           <Card
-            className="animate-fade-in relative h-70 w-80 items-center border-white/20 bg-white/10 shadow-2xl backdrop-blur-md transition-all duration-300"
+            className="animate-fade-in relative h-auto w-80 items-center border-white/20 bg-white/10 shadow-2xl backdrop-blur-md transition-all duration-300"
             onMouseEnter={() => setCardHovered(true)}
             onMouseLeave={() => setCardHovered(false)}>
             {/* Card background for hover effect, not covering button */}
@@ -60,7 +57,7 @@ export default function JoinRoomPage() {
               className={`pointer-events-none absolute inset-0 z-0 rounded-lg transition-all duration-300 ${cardHovered && !buttonHovered ? "bg-white/15" : ""}`}
             />
             <div className="relative z-10 flex w-full flex-col items-center gap-4 px-4 py-2">
-              <CardTitle className="text-header-secondary flex flex-col items-center gap-4">
+              <CardTitle className="text-header-secondary flex h-full flex-col items-center gap-4">
                 Enter Room Code <br /> Giggity Giggity:
                 <Lock className="text-room-cyan h-8 w-8" />
               </CardTitle>
@@ -68,17 +65,21 @@ export default function JoinRoomPage() {
                 placeholder="Enter room code (e.g., ABC123)"
                 value={roomCode}
                 onChange={e => setRoomCode(e.target.value)}
-                className="letter-spacing max-w-60 border-white/30 bg-white/20 py-6 text-center font-mono text-lg text-white placeholder:text-white/50"
+                className="max-w-60 border-white/30 bg-white/20 py-4 text-center font-mono text-lg text-white placeholder:text-white/50"
                 maxLength={6}
               />
+              {/* Input for player name */}
+              <Input
+                placeholder="Enter your name"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                className="max-w-60 border-white/30 bg-white/20 py-4 text-center font-mono text-lg text-white placeholder:text-white/50"
+              />
               <Button
-                onClick={() => {
-                  handleJoin();
-                  setPlayerName(name);
-                }}
+                onClick={handleJoin}
                 onMouseEnter={() => setButtonHovered(true)}
                 onMouseLeave={() => setButtonHovered(false)}
-                className="hover: from-room-purple to-room-purple-light hover:from-room-purple-light hover:to-room-purple group w-full bg-gradient-to-r py-6 text-lg font-semibold text-white shadow-lg transition-all duration-300 hover:shadow-xl">
+                className="btn">
                 Join Room
               </Button>
             </div>

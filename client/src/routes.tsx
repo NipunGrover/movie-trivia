@@ -3,6 +3,7 @@ import { Root } from "./Root";
 import JoinRoomPage from "./pages/JoinRoomPage";
 import GamePage from "./pages/GamePage";
 import CreateRoomPage from "./pages/CreateRoomPage";
+import WaitingRoomPage from "./pages/WaitingRoomPage";
 const createRoomRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/create",
@@ -25,6 +26,12 @@ const joinRoomWithIdRoute = createRoute({
   component: JoinRoomPage
 });
 
+const waitingRoomRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/waiting/$roomId",
+  component: WaitingRoomPage
+});
+
 const gamePageRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
@@ -40,6 +47,7 @@ const gameRoomRoute = createRoute({
 export const routeTree = rootRoute.addChildren([
   joinRoomPageRoute,
   joinRoomWithIdRoute,
+  waitingRoomRoute,
   gamePageRoute,
   gameRoomRoute,
   createRoomRoute
