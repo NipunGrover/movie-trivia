@@ -6,6 +6,7 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { usePlayerStore } from "@/stores/usePlayerStore";
+import { toast } from "sonner";
 
 export default function JoinRoomPage() {
   const params = useParams({ strict: false });
@@ -22,9 +23,36 @@ export default function JoinRoomPage() {
   const [cardHovered, setCardHovered] = useState(false);
   const [buttonHovered, setButtonHovered] = useState(false);
 
-  const handleJoin = () => {
-    setPlayerName(name);
-    navigate({ to: "/waiting/$roomId", params: { roomId: roomCode } });
+  const handleJoin = async () => {
+    // Client-side basic validation
+    if (!validateInputFields()) return;
+    try {
+      // Server-side check if room exists
+      const response = await fetch(`http://localhost:3000/validate-room/${roomCode}`);
+      if (!response.ok) {
+        const data = await response.json();
+        toast.error(data.message || "Room does not exist");
+        return;
+      }
+      // Room exists, proceed to join
+      setPlayerName(name);
+      navigate({ to: "/waiting/$roomId", params: { roomId: roomCode } });
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to validate room. Please try again.");
+    }
+  };
+
+  const validateInputFields = () => {
+    if (roomCode.trim() === "") {
+      toast.error("Room ID cannot be empty");
+      return false;
+    }
+    if (name.trim() === "") {
+      toast.error("Name cannot be empty");
+      return false;
+    }
+    return true;
   };
 
   return (

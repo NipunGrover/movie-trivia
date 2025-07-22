@@ -8,16 +8,29 @@ export default function CreateRoomPage() {
   const [roomId, setRoomId] = useState<string | null>(() =>
     localStorage.getItem("roomId")
   );
+  const [isCreating, setIsCreating] = useState(false);
   const navigate = useNavigate({ from: createRoomRoute.id });
 
   const createRoom = async () => {
-    const res = await fetch("http://localhost:3000/create-room", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" }
-    });
-    const { roomId: newRoomId } = await res.json();
-    setRoomId(newRoomId);
-    localStorage.setItem("roomId", newRoomId);
+    setIsCreating(true);
+    try {
+      const res = await fetch("http://localhost:3000/create-room", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      });
+      const { roomId: newRoomId } = await res.json();
+      setRoomId(newRoomId);
+      localStorage.setItem("roomId", newRoomId);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const createNewRoom = async () => {
+    // Clear any existing room ID before creating a new one
+    localStorage.removeItem("roomId");
+    setRoomId(null);
+    await createRoom();
   };
 
   const goToJoin = () => {
@@ -32,8 +45,13 @@ export default function CreateRoomPage() {
   return (
     <div className="from-room-purple to-room-cyan relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br via-purple-700 p-4 text-center">
       {!roomId ? (
-        <button onClick={createRoom} className="group red-btn">
-          <span className="relative z-10">Create New Room</span>
+        <button
+          onClick={createRoom}
+          className="group red-btn"
+          disabled={isCreating}>
+          <span className="relative z-10">
+            {isCreating ? "Creating Room..." : "Create New Room"}
+          </span>
 
           <span className="absolute inset-0 -translate-x-full skew-x-[-20deg] bg-white opacity-0 transition-transform duration-500 ease-out group-hover:translate-x-full group-hover:opacity-20"></span>
 
@@ -41,12 +59,22 @@ export default function CreateRoomPage() {
         </button>
       ) : (
         <div className="flex flex-col items-center gap-4">
-          <p>
-            Your room ID is <strong>{roomId}</strong>
+          <p className="text-lg text-white">
+            Your room ID is{" "}
+            <strong className="text-yellow-300">{roomId}</strong>
           </p>
-          <Button className="red-btn" onClick={goToJoin}>
-            Go to Join Room
-          </Button>
+          <div className="flex flex-col gap-4 sm:flex-row">
+            <Button className="red-btn" onClick={goToJoin}>
+              Go to Join Room
+            </Button>
+            <Button
+              variant="outline"
+              onClick={createNewRoom}
+              disabled={isCreating}
+              className="border-white text-white hover:bg-white hover:text-purple-700">
+              {isCreating ? "Creating..." : "Create New Room Instead"}
+            </Button>
+          </div>
         </div>
       )}
     </div>

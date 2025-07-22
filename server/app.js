@@ -56,8 +56,29 @@ app.get("/", (req, res) => {
 });
 
 // List all active rooms
+// This is just for testing purposes
+// TODO: Fix the rooms not cleaning up issue until the server restarts
 app.get("/rooms", (req, res) => {
-  res.json({ rooms: Object.keys(rooms) });
+  const activeRooms = Object.keys(rooms).filter(
+    (roomId) => Object.keys(rooms[roomId].players).length > 0
+  );
+  res.json({
+    rooms: Object.keys(rooms),
+    activeRooms,
+    totalRooms: Object.keys(rooms).length,
+    emptyRooms: Object.keys(rooms).length - activeRooms.length,
+  });
+});
+
+// Validate room existence by ID
+app.get("/validate-room/:roomId", (req, res) => {
+  const { roomId } = req.params;
+  if (rooms[roomId]) {
+    return res.json({ exists: true });
+  }
+  return res
+    .status(404)
+    .json({ exists: false, message: "Room does not exist" });
 });
 
 io.on("connection", (socket) => {
