@@ -6,9 +6,11 @@ import { nanoid } from "nanoid"; // Importing nanoid to generate unique room IDs
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "http://localhost:5173" } });
+const io = new Server(server, {
+  cors: { origin: ["http://localhost:5173", "http://localhost:5174"] },
+});
 
-app.use(cors({ origin: "http://localhost:5173" }));
+app.use(cors({ origin: ["http://localhost:5173", "http://localhost:5174"] }));
 app.use(express.json());
 
 // In-memory rooms store

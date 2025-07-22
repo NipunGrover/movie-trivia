@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { toast } from "sonner";
+import { joinRoom } from "@/lib/socket";
 
 export default function JoinRoomPage() {
   const params = useParams({ strict: false });
@@ -28,7 +29,9 @@ export default function JoinRoomPage() {
     if (!validateInputFields()) return;
     try {
       // Server-side check if room exists
-      const response = await fetch(`http://localhost:3000/validate-room/${roomCode}`);
+      const response = await fetch(
+        `http://localhost:3000/validate-room/${roomCode}`
+      );
       if (!response.ok) {
         const data = await response.json();
         toast.error(data.message || "Room does not exist");
@@ -36,6 +39,8 @@ export default function JoinRoomPage() {
       }
       // Room exists, proceed to join
       setPlayerName(name);
+      // Join the room via WebSocket before navigating
+      joinRoom(roomCode, name);
       navigate({ to: "/waiting/$roomId", params: { roomId: roomCode } });
     } catch (error) {
       console.error(error);
