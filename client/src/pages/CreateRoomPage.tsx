@@ -5,15 +5,20 @@ import "@/index.css";
 import { Button } from "@/components/ui/button";
 
 export default function CreateRoomPage() {
-  const [roomId, setRoomId] = useState<string | null>(() =>
-    localStorage.getItem("roomId")
-  );
+  // Quick fix: Don't persist room IDs from previous sessions
+  const [roomId, setRoomId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const navigate = useNavigate({ from: createRoomRoute.id });
 
   const createRoom = async () => {
     setIsCreating(true);
     try {
+      // Cleanup inactive rooms first
+      await fetch("http://localhost:3000/cleanup-rooms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      });
+
       const res = await fetch("http://localhost:3000/create-room", {
         method: "POST",
         headers: { "Content-Type": "application/json" }

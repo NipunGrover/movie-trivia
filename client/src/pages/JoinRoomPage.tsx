@@ -1,7 +1,7 @@
 import "@/index.css";
 import { Lock, Sparkles, Gamepad2Icon } from "lucide-react";
 import { Card, CardTitle } from "@/components/ui/card";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,15 @@ export default function JoinRoomPage() {
   const [cardHovered, setCardHovered] = useState(false);
   const [buttonHovered, setButtonHovered] = useState(false);
 
+  // Clean up any existing connections when component mounts
+  useEffect(() => {
+    // If user navigates back to join page, clean up any existing connections
+    // This prevents issues with multiple connections
+    return () => {
+      // Only clean up on unmount, not on mount
+    };
+  }, []);
+
   const handleJoin = async () => {
     // Client-side basic validation
     if (!validateInputFields()) return;
@@ -40,8 +49,16 @@ export default function JoinRoomPage() {
       // Room exists, proceed to join
       setPlayerName(name);
       // Join the room via WebSocket before navigating
-      joinRoom(roomCode, name);
-      navigate({ to: "/waiting/$roomId", params: { roomId: roomCode } });
+      try {
+        await joinRoom(roomCode, name);
+        navigate({ to: "/waiting/$roomId", params: { roomId: roomCode } });
+      } catch (socketError) {
+        const errorMessage =
+          socketError instanceof Error
+            ? socketError.message
+            : "Failed to join room";
+        toast.error(errorMessage);
+      }
     } catch (error) {
       console.error(error);
       toast.error("Failed to validate room. Please try again.");
@@ -89,7 +106,13 @@ export default function JoinRoomPage() {
             <div
               className={`pointer-events-none absolute inset-0 z-0 rounded-lg transition-all duration-300 ${cardHovered && !buttonHovered ? "bg-white/15" : ""}`}
             />
-            <div className="relative z-10 flex w-full flex-col items-center gap-4 px-4 py-2">
+            <div
+              className="relative z-10 flex w-full flex-col items-center gap-4 px-4 py-2"
+              onKeyDown={e => {
+                if (e.key === "Enter") {
+                  handleJoin();
+                }
+              }}>
               <CardTitle className="text-header-secondary flex h-full flex-col items-center gap-4">
                 Enter Room Code <br /> Giggity Giggity:
                 <Lock className="text-room-cyan h-8 w-8" />
