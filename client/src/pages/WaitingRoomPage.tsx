@@ -1,6 +1,6 @@
 import "@/index.css";
 import { usePlayerStore } from "@/stores/usePlayerStore";
-import { useEffect, useCallback } from "react";
+import { useEffect } from "react";
 import { useParams, useNavigate } from "@tanstack/react-router";
 import { getSocket, leaveRoom, connect } from "@/lib/socket";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,8 @@ import { LogOut, Users } from "lucide-react";
 import { toast } from "sonner";
 
 const WaitingRoomPage = () => {
+  "use memo"; // Hint to React Compiler to optimize this component
+
   // This is for all players in the room
   const setPlayers = usePlayerStore(s => s.setPlayers);
   const players = usePlayerStore(s => s.players);
@@ -18,15 +20,18 @@ const WaitingRoomPage = () => {
   const roomId = params.roomId;
 
   // Handle leaving the room
-  const handleLeaveRoom = useCallback(() => {
+  /**
+   *
+   */
+  const handleLeaveRoom = () => {
     if (window.confirm("Are you sure you want to leave the room?")) {
       console.log("✅ User confirmed leaving via leave button");
       leaveRoom();
       clearPlayerName(); // Clear persisted player name
       toast.success("Left the room");
-      navigate({ to: "/create" });
+      void navigate({ to: "/create" });
     }
-  }, [navigate, clearPlayerName]);
+  };
 
   // Handle browser back button
   useEffect(() => {

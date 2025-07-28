@@ -8,11 +8,12 @@ import importPlugin from "eslint-plugin-import";
 import react from "eslint-plugin-react";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
+import reactCompiler from "eslint-plugin-react-compiler";
 import tseslint from "typescript-eslint";
 import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended";
 import eslintConfigPrettier from "eslint-config-prettier";
 import eslintPluginSecurity from "eslint-plugin-security";
-import eslintPluginTailwind from "eslint-plugin-tailwindcss";
+// import eslintPluginTailwind from "eslint-plugin-tailwindcss";
 import eslintPluginJsdoc from "eslint-plugin-jsdoc";
 import eslintSortKeysFix from "eslint-plugin-sort-keys-fix";
 import eslintPerfectionist from "eslint-plugin-perfectionist";
@@ -119,13 +120,17 @@ const reactConfig = tseslint.config({
   plugins: {
     react,
     "react-hooks": reactHooks,
-    "react-refresh": reactRefresh
+    "react-refresh": reactRefresh,
+    "react-compiler": reactCompiler
   },
   settings: {
     react: { version: "detect" }
   },
   rules: {
     ...reactHooks.configs.recommended.rules,
+
+    /* React Compiler Rules */
+    "react-compiler/react-compiler": "error", // Enables React Compiler optimizations
 
     /* Off Rules */
 
@@ -160,7 +165,7 @@ const reactConfig = tseslint.config({
 
     /* Error Rules */
 
-    "react/forbid-component-props": ["error"] // (off) Allows any props on components // "error" Forbids certain props like `style`
+    "react/forbid-component-props": ["off"] // (off) Allows any props on components // "error" Forbids certain props like `style`
   }
 });
 
