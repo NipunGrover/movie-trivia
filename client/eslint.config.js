@@ -130,6 +130,8 @@ const reactConfig = tseslint.config({
     ...reactHooks.configs.recommended.rules,
 
     /* React Compiler Rules */
+
+    // Turn to off if you want to disable the React Compiler  optimizations (make sure to also make changes vite.config.js)
     "react-compiler/react-compiler": "error", // Enables React Compiler optimizations
 
     /* Off Rules */

@@ -9,6 +9,7 @@ import { resolve } from "path";
 export default defineConfig({
   plugins: [
     react({
+      // Comment the babel block if you want to disable React Compiler optimizations (make sure to also make changes eslint.config.js)
       babel: {
         plugins: [
           [
