@@ -88,6 +88,21 @@ app.get("/validate-room/:roomId", (req, res) => {
     .json({ exists: false, message: "Room does not exist" });
 });
 
+// NEW: Check if a given player (by name) is currently in a room
+// Case-insensitive comparison on player names
+app.get("/in-game/:roomId/:playerName", (req, res) => {
+  const { roomId, playerName } = req.params;
+  // object key
+  const room = rooms[roomId];
+  if (!room) {
+    return res.json({ inGame: false, reason: "room-not-found" });
+  }
+  const inGame = Object.values(room.players).some(
+    (p) => p.name.toLowerCase() === playerName.toLowerCase()
+  );
+  return res.json({ inGame });
+});
+
 // Cleanup inactive rooms (rooms with no players)
 app.post("/cleanup-rooms", (req, res) => {
   const beforeCount = Object.keys(rooms).length;

@@ -1,14 +1,18 @@
 import "@/index.css";
-import { Lock, Sparkles, Gamepad2Icon } from "lucide-react";
-import { Card, CardTitle } from "@/components/ui/card";
-import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "@tanstack/react-router";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { usePlayerStore } from "@/stores/usePlayerStore";
-import { toast } from "sonner";
-import { joinRoom } from "@/lib/socket";
 
+import { Button } from "@/components/ui/button";
+import { Card, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { joinRoom } from "@/lib/socket";
+import { usePlayerStore } from "@/stores/usePlayerStore";
+import { useNavigate, useParams } from "@tanstack/react-router";
+import { Gamepad2Icon, Lock, PlusCircle, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+
+/**
+ *
+ */
 export default function JoinRoomPage() {
   const params = useParams({ strict: false });
   const setPlayerName = usePlayerStore(s => s.setPlayerName);
@@ -33,6 +37,9 @@ export default function JoinRoomPage() {
     };
   }, []);
 
+  /**
+   *
+   */
   const handleJoin = async () => {
     // Client-side basic validation
     if (!validateInputFields()) return;
@@ -51,7 +58,9 @@ export default function JoinRoomPage() {
       // Join the room via WebSocket before navigating
       try {
         await joinRoom(roomCode, name);
-        navigate({ to: "/waiting/$roomId", params: { roomId: roomCode } });
+        // This is to persist roomId across refreshes
+        localStorage.setItem("roomId", roomCode);
+        navigate({ params: { roomId: roomCode }, to: "/waiting/$roomId" });
       } catch (socketError) {
         const errorMessage =
           socketError instanceof Error
@@ -65,6 +74,9 @@ export default function JoinRoomPage() {
     }
   };
 
+  /**
+   *
+   */
   const validateInputFields = () => {
     if (roomCode.trim() === "") {
       toast.error("Room ID cannot be empty");
@@ -100,8 +112,12 @@ export default function JoinRoomPage() {
           {/* Blurred card  */}
           <Card
             className="animate-fade-in relative h-auto w-80 items-center border-white/20 bg-white/10 shadow-2xl backdrop-blur-md transition-all duration-300"
-            onMouseEnter={() => setCardHovered(true)}
-            onMouseLeave={() => setCardHovered(false)}>
+            onMouseEnter={() => {
+              setCardHovered(true);
+            }}
+            onMouseLeave={() => {
+              setCardHovered(false);
+            }}>
             {/* Card background for hover effect, not covering button */}
             <div
               className={`pointer-events-none absolute inset-0 z-0 rounded-lg transition-all duration-300 ${cardHovered && !buttonHovered ? "bg-white/15" : ""}`}
@@ -118,25 +134,39 @@ export default function JoinRoomPage() {
                 <Lock className="text-room-cyan h-8 w-8" />
               </CardTitle>
               <Input
-                placeholder="Enter room code (e.g., ABC123)"
-                value={roomCode}
-                onChange={e => setRoomCode(e.target.value)}
                 className="max-w-60 border-white/30 bg-white/20 py-4 text-center font-mono text-lg text-white placeholder:text-white/50"
                 maxLength={6}
+                onChange={e => {
+                  setRoomCode(e.target.value);
+                }}
+                placeholder="Enter room code (e.g., ABC123)"
+                value={roomCode}
               />
               {/* Input for player name */}
               <Input
+                className="max-w-60 border-white/30 bg-white/20 py-4 text-center font-mono text-lg text-white placeholder:text-white/50"
+                onChange={e => {
+                  setName(e.target.value);
+                }}
                 placeholder="Enter your name"
                 value={name}
-                onChange={e => setName(e.target.value)}
-                className="max-w-60 border-white/30 bg-white/20 py-4 text-center font-mono text-lg text-white placeholder:text-white/50"
               />
               <Button
+                className="btn"
                 onClick={handleJoin}
-                onMouseEnter={() => setButtonHovered(true)}
-                onMouseLeave={() => setButtonHovered(false)}
-                className="btn">
+                onMouseEnter={() => {
+                  setButtonHovered(true);
+                }}
+                onMouseLeave={() => {
+                  setButtonHovered(false);
+                }}>
                 Join Room
+              </Button>
+              <Button
+                className="flex items-center gap-2 border-white/40 text-white hover:bg-white/20"
+                onClick={() => navigate({ to: "/create" })}
+                variant="outline">
+                <PlusCircle className="h-4 w-4" /> Create a Room Instead
               </Button>
             </div>
           </Card>

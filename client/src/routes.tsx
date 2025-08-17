@@ -4,6 +4,18 @@ import JoinRoomPage from "./pages/JoinRoomPage";
 import GamePage from "./pages/GamePage";
 import CreateRoomPage from "./pages/CreateRoomPage";
 import WaitingRoomPage from "./pages/WaitingRoomPage";
+import HomeRedirectPage from "./pages/HomeRedirectPage";
+
+const homeRedirectRoute = createRoute({
+  component: HomeRedirectPage,
+  /**
+   *
+   */
+  // eslint-disable-next-line no-use-before-define
+  getParentRoute: () => rootRoute,
+  path: "/"
+});
+
 const createRoomRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/create",
@@ -34,7 +46,7 @@ const waitingRoomRoute = createRoute({
 
 const gamePageRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/",
+  path: "/game",
   component: GamePage
 });
 
@@ -45,6 +57,7 @@ const gameRoomRoute = createRoute({
 });
 
 export const routeTree = rootRoute.addChildren([
+  homeRedirectRoute,
   joinRoomPageRoute,
   joinRoomWithIdRoute,
   waitingRoomRoute,

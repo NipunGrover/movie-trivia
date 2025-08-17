@@ -1,125 +1,178 @@
 import "@/index.css";
-import { usePlayerStore } from "@/stores/usePlayerStore";
-import { useEffect } from "react";
-import { useParams, useNavigate } from "@tanstack/react-router";
-import { getSocket, leaveRoom, connect } from "@/lib/socket";
+/* eslint-disable no-console */
+
 import { Button } from "@/components/ui/button";
+import { connect, getSocket, leaveRoom } from "@/lib/socket";
+import { usePlayerStore } from "@/stores/usePlayerStore";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { LogOut, Users } from "lucide-react";
+import { useEffect } from "react";
 import { toast } from "sonner";
 
-const WaitingRoomPage = () => {
-  "use memo"; // Hint to React Compiler to optimize this component
+const EMPTY_COUNT = 0;
 
-  // This is for all players in the room
+// Dev storage helpers (wrapped in try/catch to avoid SSR or security errors)
+
+/**
+ * @param key
+ */
+function storageGet(key: string) {
+  try {
+    return typeof window !== "undefined"
+      ? window.localStorage.getItem(key)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * @param key
+ */
+function storageRemove(key: string) {
+  try {
+    // eslint-disable-next-line n/no-unsupported-features/node-builtins
+    if (typeof window !== "undefined") window.localStorage.removeItem(key);
+  } catch {
+    () => {};
+  }
+}
+
+/**
+ * @param key
+ * @param val
+ */
+function storageSet(key: string, val: string) {
+  try {
+    // eslint-disable-next-line n/no-unsupported-features/node-builtins
+    if (typeof window !== "undefined") window.localStorage.setItem(key, val);
+  } catch {}
+}
+
+// WaitingRoomPage – dev version with verbose logging & inline explanatory comments
+
+/**
+ *
+ */
+function WaitingRoomPage() {
+  "use memo"; // React Compiler hint remains
+
   const setPlayers = usePlayerStore(s => s.setPlayers);
   const players = usePlayerStore(s => s.players);
   const playerName = usePlayerStore(s => s.playerName);
   const clearPlayerName = usePlayerStore(s => s.clearPlayerName);
-  const params = useParams({ strict: false });
+  const { roomId } = useParams({ strict: false });
   const navigate = useNavigate();
-  const roomId = params.roomId;
 
-  // Handle leaving the room
+  // User clicks Leave button (explicit leave – clear storage and player state)
+
   /**
    *
    */
-  const handleLeaveRoom = () => {
+  function handleLeaveRoom() {
+    console.log("[WaitingRoom] Leave button clicked");
     if (window.confirm("Are you sure you want to leave the room?")) {
-      console.log("✅ User confirmed leaving via leave button");
+      console.log("[WaitingRoom] Confirmed leave");
       leaveRoom();
-      clearPlayerName(); // Clear persisted player name
+      clearPlayerName();
+      storageRemove("roomId");
       toast.success("Left the room");
       void navigate({ to: "/create" });
+    } else {
+      console.log("[WaitingRoom] Leave cancelled");
     }
-  };
+  }
 
-  // Handle browser back button
+  // Intercept browser back button so accidental navigation doesn’t silently drop user
   useEffect(() => {
-    const handlePopState = (event: PopStateEvent) => {
-      console.log("🔙 Back button pressed in waiting room");
-
-      // Prevent the default navigation immediately
+    /**
+     * @param event
+     */
+    function handlePopState(event: PopStateEvent) {
+      console.log("[WaitingRoom] popstate (back) detected", event);
       event.preventDefault();
-
       const shouldLeave = window.confirm(
         "Are you sure you want to leave the room? You'll be disconnected from the game."
       );
-
       if (shouldLeave) {
-        console.log("✅ User confirmed leaving via back button");
+        console.log("[WaitingRoom] Back confirm -> leaving room");
         leaveRoom();
-        clearPlayerName(); // Clear persisted player name
-        navigate({ to: "/create" });
+        clearPlayerName();
+        storageRemove("roomId");
+        void navigate({ to: "/create" });
       } else {
-        console.log("❌ User cancelled leaving via back button");
-        // Push the current state back to prevent navigation
+        console.log("[WaitingRoom] Back cancelled – restoring state");
         window.history.pushState(null, "", window.location.href);
       }
-    };
+    }
 
-    console.log("🎣 Setting up back button handler for waiting room");
-
-    // Push an initial state to handle back button
+    console.log("[WaitingRoom] Installing popstate handler");
     window.history.pushState(null, "", window.location.href);
     window.addEventListener("popstate", handlePopState);
-
     return () => {
-      console.log("🧹 Cleaning up back button handler for waiting room");
+      console.log("[WaitingRoom] Removing popstate handler");
       window.removeEventListener("popstate", handlePopState);
     };
-  }, [navigate]);
+  }, [navigate, clearPlayerName]);
 
-  // Handle browser refresh/close
+  // (Reserved for future beforeunload handling if needed – intentionally empty now)
   useEffect(() => {
-    // Removed aggressive beforeunload handler that was calling leaveRoom()
-    // Let the natural disconnect/reconnect flow handle page refreshes
-    // Only clean up on explicit user actions (back button, leave button)
+    console.log("[WaitingRoom] Mount placeholder effect (no beforeunload)");
   }, []);
 
+  // Core lifecycle: validate presence of room + player, persist roomId, (re)join socket, subscribe to updates
   useEffect(() => {
+    console.log("[WaitingRoom] Main effect run", { playerName, roomId });
+
     if (!roomId) {
-      console.log("No room ID, redirecting to create page");
-      navigate({ to: "/create" });
+      console.log("[WaitingRoom] Missing roomId -> redirect /create");
+      void navigate({ to: "/create" });
       return;
     }
-
     if (!playerName) {
-      console.log("No player name stored, redirecting to join page");
-      navigate({ to: `/join/${roomId}` });
+      console.log("[WaitingRoom] Missing playerName -> redirect join page");
+      void navigate({ to: `/join/${roomId}` });
       return;
     }
 
-    // Get the existing socket connection or create a new one
-    let socket = getSocket();
+    if (storageGet("roomId") !== roomId) {
+      console.log("[WaitingRoom] Persisting roomId to localStorage", roomId);
+      storageSet("roomId", roomId);
+    } else {
+      console.log("[WaitingRoom] roomId already persisted");
+    }
 
+    let socket = getSocket();
     if (!socket) {
       console.log(
-        "No existing socket, creating new connection for refresh/direct navigation"
+        "[WaitingRoom] No existing socket – establishing new connection"
       );
       socket = connect();
+    } else {
+      console.log("[WaitingRoom] Using existing socket", socket.id);
     }
 
-    console.log("WaitingRoom: Setting up socket listeners");
+    // Transform server player map into ordered name list and update store
 
-    const handleRoomUpdate = (data: {
+    /**
+     * @param data
+     * @param data.players
+     */
+    function handleRoomUpdate(data: {
       players: Record<string, { name: string; score: number }>;
-    }) => {
-      console.log("Room update received:", data);
+    }) {
+      console.log("[WaitingRoom] roomUpdate payload", data);
       const names = Object.values(data.players).map(p => p.name);
-      console.log("Player names:", names);
+      console.log("[WaitingRoom] Player list", names);
       setPlayers(names);
-    };
+    }
 
-    // Listen for room updates
     socket.on("roomUpdate", handleRoomUpdate);
+    console.log("[WaitingRoom] Emitting joinRoom", { playerName, roomId });
+    socket.emit("joinRoom", { playerName, roomId });
 
-    // Auto-rejoin the room (handles page refresh/navigation)
-    // This ensures the new socket connection is properly added to the room
-    console.log("Auto-rejoining room with name:", playerName);
-    socket.emit("joinRoom", { roomId, playerName });
-
-    // Clean up the event listener when component unmounts
     return () => {
+      console.log("[WaitingRoom] Cleanup: removing roomUpdate listener");
       socket.off("roomUpdate", handleRoomUpdate);
     };
   }, [roomId, setPlayers, playerName, navigate]);
@@ -127,16 +180,16 @@ const WaitingRoomPage = () => {
   return (
     <div className="animate-gradient-bg min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-blue-500 bg-[length:400%_400%]">
       <div className="flex min-h-screen flex-col items-center justify-center gap-8 text-white">
-        {/* Header with room info and leave button */}
+        {/* Header */}
         <div className="flex w-full max-w-md items-center justify-between">
           <div className="text-center">
             <h1 className="text-header">Waiting Room</h1>
             <p className="text-sm text-white/80">Room ID: {roomId}</p>
           </div>
           <Button
+            className="border-red-300 text-red-300 hover:bg-red-300 hover:text-red-900"
             onClick={handleLeaveRoom}
-            variant="outline"
-            className="border-red-300 text-red-300 hover:bg-red-300 hover:text-red-900">
+            variant="outline">
             <LogOut className="mr-2 h-4 w-4" />
             Leave
           </Button>
@@ -151,12 +204,12 @@ const WaitingRoomPage = () => {
             </h2>
           </div>
 
-          {players.length > 0 ? (
+          {players.length > EMPTY_COUNT ? (
             <div className="space-y-2">
               {players.map((name, index) => (
                 <div
-                  key={name}
-                  className="rounded-lg bg-white/10 px-4 py-2 text-lg font-medium backdrop-blur-sm">
+                  className="rounded-lg bg-white/10 px-4 py-2 text-lg font-medium backdrop-blur-sm"
+                  key={name}>
                   {index + 1}. {name}
                 </div>
               ))}
@@ -168,7 +221,7 @@ const WaitingRoomPage = () => {
           )}
         </div>
 
-        {/* Status message */}
+        {/* Status footer */}
         <div className="text-center text-white/70">
           <p>Waiting for the game to start...</p>
           <p className="text-sm">Share the room ID with friends to join!</p>
@@ -176,6 +229,6 @@ const WaitingRoomPage = () => {
       </div>
     </div>
   );
-};
+}
 
 export default WaitingRoomPage;
