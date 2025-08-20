@@ -1,8 +1,9 @@
 import "@/index.css";
 
 import { Button } from "@/components/ui/button";
+import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { use, useState } from "react";
 
 import { createRoomRoute } from "../routes";
 
@@ -14,6 +15,19 @@ export default function CreateRoomPage() {
   const [roomId, setRoomId] = useState<null | string>(null);
   const [isCreating, setIsCreating] = useState(false);
   const navigate = useNavigate({ from: createRoomRoute.id });
+  const { playerName, setPlayerName } = usePlayerStore();
+
+  /**
+   *
+   */
+  const goToJoin = () => {
+    if (roomId) {
+      navigate({
+        params: { roomId },
+        to: "/join/$roomId"
+      });
+    }
+  };
 
   /**
    *
@@ -28,12 +42,18 @@ export default function CreateRoomPage() {
       });
 
       const res = await fetch("http://localhost:3000/create-room", {
+        body: JSON.stringify({ hostName: playerName }),
         headers: { "Content-Type": "application/json" },
         method: "POST"
       });
       const { roomId: newRoomId } = await res.json();
       setRoomId(newRoomId);
       localStorage.setItem("roomId", newRoomId);
+
+      // Store that this user is the host of this room
+      localStorage.setItem(`host_${newRoomId}`, "true");
+
+      goToJoin();
     } finally {
       setIsCreating(false);
     }
@@ -47,18 +67,6 @@ export default function CreateRoomPage() {
     localStorage.removeItem("roomId");
     setRoomId(null);
     await createRoom();
-  };
-
-  /**
-   *
-   */
-  const goToJoin = () => {
-    if (roomId) {
-      navigate({
-        params: { roomId },
-        to: "/join/$roomId"
-      });
-    }
   };
 
   return (
@@ -90,7 +98,9 @@ export default function CreateRoomPage() {
             <Button
               className="border-white text-white hover:bg-white hover:text-purple-700"
               disabled={isCreating}
-              onClick={createNewRoom}
+              onClick={() => {
+                void createNewRoom();
+              }}
               variant="outline">
               {isCreating ? "Creating..." : "Create New Room Instead"}
             </Button>

@@ -157,11 +157,14 @@ function WaitingRoomPage() {
     /**
      * @param data
      * @param data.players
+     * @param data.isHost
      */
     function handleRoomUpdate(data: {
+      isHost?: boolean;
       players: Record<string, { name: string; score: number }>;
     }) {
       console.log("[WaitingRoom] roomUpdate payload", data);
+      console.log("🔄 Am I host?", data.isHost);
       const names = Object.values(data.players).map(p => p.name);
       console.log("[WaitingRoom] Player list", names);
       setPlayers(names);

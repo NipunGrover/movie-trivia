@@ -23,6 +23,7 @@ const rooms = {};
 
 app.post("/create-room", (req, res) => {
   const roomId = nanoid(6);
+  const { hostName } = req.body;
 
   // This threw me off because conventionally i've only ever
   // seen arr[index] but, this is basically obj[key] and not arr[index]
@@ -49,7 +50,8 @@ app.post("/create-room", (req, res) => {
   rooms[roomId] = {
     players: {},
     round: 0,
-    hostId: null, // will set when host joins
+    hostId: null, // will set when host idk even if i need this
+    host: hostName,
     maxPlayers: 10, // or pull from req.body
     hasStarted: false,
   };
@@ -150,6 +152,12 @@ io.on("connection", (socket) => {
           players: room.players,
           hostId: room.hostId,
         });
+        // Send individual response with isHost status
+        socket.emit("roomUpdate", {
+          players: room.players,
+          hostId: room.hostId,
+          isHost: socket.id === room.hostId,
+        });
         return;
       }
 
@@ -180,9 +188,16 @@ io.on("connection", (socket) => {
     // Cancel any pending cleanup for this room since someone joined
     cancelRoomCleanup(roomId);
 
+    const isHost = socket.id === room.hostId;
+    console.log(
+      `📊 Player ${playerName} (${socket.id}) joined room ${roomId}. isHost: ${isHost}`
+    );
+    console.log(`📊 Room ${roomId} hostId: ${room.hostId}`);
+
     io.to(roomId).emit("roomUpdate", {
       players: room.players,
       hostId: room.hostId,
+      isHost: isHost,
     });
   });
 
@@ -192,6 +207,7 @@ io.on("connection", (socket) => {
       socket.emit("roomUpdate", {
         players: room.players,
         hostId: room.hostId,
+        isHost: socket.id === room.hostId,
       });
     }
   });
