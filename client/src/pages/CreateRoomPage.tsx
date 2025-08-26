@@ -1,9 +1,10 @@
 import "@/index.css";
 
 import { Button } from "@/components/ui/button";
+import { CreateRoomResponseSchema } from "@/lib/schemas";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useNavigate } from "@tanstack/react-router";
-import { use, useState } from "react";
+import { useState } from "react";
 
 import { createRoomRoute } from "../routes";
 
@@ -30,7 +31,7 @@ export default function CreateRoomPage() {
   };
 
   /**
-   *
+   * Creates a new room and validates the API response.
    */
   const createRoom = async () => {
     setIsCreating(true);
@@ -46,7 +47,16 @@ export default function CreateRoomPage() {
         headers: { "Content-Type": "application/json" },
         method: "POST"
       });
-      const { roomId: newRoomId } = await res.json();
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const responseData = await res.json();
+
+      // Validate the response using Zod
+      const validatedResponse = CreateRoomResponseSchema.parse(responseData);
+      const { roomId: newRoomId } = validatedResponse;
+      // Means:
+      //const newRoomId = validatedResponse.roomId;
+
       setRoomId(newRoomId);
       localStorage.setItem("roomId", newRoomId);
 
@@ -54,13 +64,16 @@ export default function CreateRoomPage() {
       localStorage.setItem(`host_${newRoomId}`, "true");
 
       goToJoin();
+    } catch (error) {
+      console.error("Failed to create room:", error);
+      // You might want to show a toast notification or error message here
     } finally {
       setIsCreating(false);
     }
   };
 
   /**
-   *
+   * Creates a new room instead of using the existing one.
    */
   const createNewRoom = async () => {
     // Clear any existing room ID before creating a new one
@@ -75,7 +88,9 @@ export default function CreateRoomPage() {
         <button
           className="group red-btn"
           disabled={isCreating}
-          onClick={createRoom}
+          onClick={() => {
+            void createRoom();
+          }}
           type="button">
           <span className="relative z-10">
             {isCreating ? "Creating Room..." : "Create New Room"}

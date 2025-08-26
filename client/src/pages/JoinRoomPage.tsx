@@ -3,6 +3,7 @@ import "@/index.css";
 import { Button } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ErrorResponseSchema } from "@/lib/schemas";
 import { joinRoom } from "@/lib/socket";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useNavigate, useParams } from "@tanstack/react-router";
@@ -38,7 +39,7 @@ export default function JoinRoomPage() {
   }, []);
 
   /**
-   *
+   * Handles joining a room with validation.
    */
   const handleJoin = async () => {
     // Client-side basic validation
@@ -49,8 +50,10 @@ export default function JoinRoomPage() {
         `http://localhost:3000/validate-room/${roomCode}`
       );
       if (!response.ok) {
-        const data = await response.json();
-        toast.error(data.message || "Room does not exist");
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const responseData = await response.json();
+        const validatedError = ErrorResponseSchema.parse(responseData);
+        toast.error(validatedError.message ?? "Room does not exist");
         return;
       }
       // Room exists, proceed to join
@@ -69,13 +72,17 @@ export default function JoinRoomPage() {
         toast.error(errorMessage);
       }
     } catch (error) {
-      console.error(error);
-      toast.error("Failed to validate room. Please try again.");
+      // Handle both network errors and validation errors
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to validate room. Please try again.";
+      toast.error(errorMessage);
     }
   };
 
   /**
-   *
+   * Validates the input fields for room code and player name.
    */
   const validateInputFields = () => {
     if (roomCode.trim() === "") {
@@ -126,7 +133,7 @@ export default function JoinRoomPage() {
               className="relative z-10 flex w-full flex-col items-center gap-4 px-4 py-2"
               onKeyDown={e => {
                 if (e.key === "Enter") {
-                  handleJoin();
+                  void handleJoin();
                 }
               }}>
               <CardTitle className="text-header-secondary flex h-full flex-col items-center gap-4">
@@ -153,7 +160,9 @@ export default function JoinRoomPage() {
               />
               <Button
                 className="btn"
-                onClick={handleJoin}
+                onClick={() => {
+                  void handleJoin();
+                }}
                 onMouseEnter={() => {
                   setButtonHovered(true);
                 }}
@@ -164,7 +173,9 @@ export default function JoinRoomPage() {
               </Button>
               <Button
                 className="flex items-center gap-2 border-white/40 text-white hover:bg-white/20"
-                onClick={() => navigate({ to: "/create" })}
+                onClick={() => {
+                  void navigate({ to: "/create" });
+                }}
                 variant="outline">
                 <PlusCircle className="h-4 w-4" /> Create a Room Instead
               </Button>
