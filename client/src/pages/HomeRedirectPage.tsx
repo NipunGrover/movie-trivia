@@ -2,6 +2,15 @@ import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
+interface CanRejoinResponse {
+  canRejoin: boolean;
+  currentlyInRoom: boolean;
+  hasStarted: boolean;
+  isOriginalHost: boolean;
+  reason?: string;
+  roomExists: boolean;
+}
+
 interface PlayerInGameResponse {
   inGame: boolean;
   reason?: string;
@@ -10,15 +19,6 @@ interface PlayerInGameResponse {
 interface RoomValidationResponse {
   exists: boolean;
   message?: string;
-}
-
-interface CanRejoinResponse {
-  canRejoin: boolean;
-  isOriginalHost: boolean;
-  currentlyInRoom: boolean;
-  roomExists: boolean;
-  hasStarted: boolean;
-  reason?: string;
 }
 
 /**
@@ -45,9 +45,11 @@ export default function HomeRedirectPage() {
       setIsValidating(true);
 
       // Check if the player can rejoin their previous room
-      fetch(`http://localhost:3000/can-rejoin/${roomId}/${encodeURIComponent(playerName)}`)
+      fetch(
+        `http://localhost:3000/can-rejoin/${roomId}/${encodeURIComponent(playerName)}`
+      )
         .then(res => res.json() as Promise<CanRejoinResponse>)
-        .then((rejoinData) => {
+        .then(rejoinData => {
           if (rejoinData.canRejoin && rejoinData.roomExists) {
             if (rejoinData.hasStarted) {
               // Game has already started - redirect to game page

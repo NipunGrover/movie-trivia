@@ -1,8 +1,12 @@
-import { io, Socket } from "socket.io-client";
+import type { Socket } from "socket.io-client";
+import { io } from "socket.io-client";
 
-let socket: Socket | null = null;
-let roomId: string | null = null;
+let socket: null | Socket = null;
+let roomId: null | string = null;
 
+/**
+ *
+ */
 const connect = () => {
   if (!socket) {
     socket = io("http://localhost:3000");
@@ -10,18 +14,28 @@ const connect = () => {
   return socket;
 };
 
+/**
+ * @param newRoomId
+ * @param playerName
+ */
 const joinRoom = (newRoomId: string, playerName: string): Promise<Socket> => {
   const currentSocket = connect();
   roomId = newRoomId;
-  currentSocket.emit("joinRoom", { roomId: newRoomId, playerName });
+  currentSocket.emit("joinRoom", { playerName, roomId: newRoomId });
 
   // Listen for errors and return them to the caller
   return new Promise((resolve, reject) => {
+    /**
+     * @param error
+     */
     const onError = (error: string) => {
       currentSocket.off("error", onError);
       reject(new Error(error));
     };
 
+    /**
+     *
+     */
     const onRoomUpdate = () => {
       currentSocket.off("error", onError);
       currentSocket.off("roomUpdate", onRoomUpdate);
@@ -33,10 +47,19 @@ const joinRoom = (newRoomId: string, playerName: string): Promise<Socket> => {
   });
 };
 
+/**
+ *
+ */
 const getSocket = () => socket;
 
+/**
+ *
+ */
 const getRoomId = () => roomId;
 
+/**
+ *
+ */
 const disconnect = () => {
   if (socket) {
     socket.disconnect();
@@ -46,6 +69,10 @@ const disconnect = () => {
 };
 
 // Only disconnect when explicitly leaving the game/room
+
+/**
+ *
+ */
 const leaveRoom = () => {
   if (socket && roomId) {
     // Emit leave room event to server with acknowledgment
@@ -59,4 +86,4 @@ const leaveRoom = () => {
   }
 };
 
-export { connect, joinRoom, getSocket, getRoomId, disconnect, leaveRoom };
+export { connect, disconnect, getRoomId, getSocket, joinRoom, leaveRoom };
