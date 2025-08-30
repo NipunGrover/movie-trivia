@@ -12,6 +12,15 @@ interface RoomValidationResponse {
   message?: string;
 }
 
+interface CanRejoinResponse {
+  canRejoin: boolean;
+  isOriginalHost: boolean;
+  currentlyInRoom: boolean;
+  roomExists: boolean;
+  hasStarted: boolean;
+  reason?: string;
+}
+
 /**
  * Decides where to send the user when they hit the site root.
  * Rules:
@@ -35,21 +44,20 @@ export default function HomeRedirectPage() {
     if (roomId && playerName) {
       setIsValidating(true);
 
-      // Validate if the room exists and the player is still in it
-      Promise.all([
-        fetch(`http://localhost:3000/validate-room/${roomId}`).then(
-          res => res.json() as Promise<RoomValidationResponse>
-        ),
-        fetch(
-          `http://localhost:3000/in-game/${roomId}/${encodeURIComponent(playerName)}`
-        ).then(res => res.json() as Promise<PlayerInGameResponse>)
-      ])
-        .then(([roomValidation, playerInGame]) => {
-          if (roomValidation.exists && playerInGame.inGame) {
-            // Room exists and player is still in it - redirect to waiting room
-            void navigate({ params: { roomId }, to: "/waiting/$roomId" });
+      // Check if the player can rejoin their previous room
+      fetch(`http://localhost:3000/can-rejoin/${roomId}/${encodeURIComponent(playerName)}`)
+        .then(res => res.json() as Promise<CanRejoinResponse>)
+        .then((rejoinData) => {
+          if (rejoinData.canRejoin && rejoinData.roomExists) {
+            if (rejoinData.hasStarted) {
+              // Game has already started - redirect to game page
+              void navigate({ params: { roomId }, to: "/game/$roomId" });
+            } else {
+              // Game hasn't started - redirect to waiting room
+              void navigate({ params: { roomId }, to: "/waiting/$roomId" });
+            }
           } else {
-            // Room doesn't exist or player is not in it - clear stored data and go to join
+            // Can't rejoin - clear stored data and go to join page
             if (typeof window !== "undefined") {
               window.localStorage?.removeItem("roomId");
             }

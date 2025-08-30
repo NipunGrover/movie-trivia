@@ -99,10 +99,43 @@ app.get("/in-game/:roomId/:playerName", (req, res) => {
   if (!room) {
     return res.json({ inGame: false, reason: "room-not-found" });
   }
-  const inGame = Object.values(room.players).some(
+  const player = Object.values(room.players).find(
     (p) => p.name.toLowerCase() === playerName.toLowerCase()
   );
-  return res.json({ inGame });
+  const inGame = !!player; // Player is in game regardless of online status
+  return res.json({ inGame, online: player?.online || false });
+});
+
+// NEW: Check if a player can rejoin a room (even if currently disconnected)
+app.get("/can-rejoin/:roomId/:playerName", (req, res) => {
+  const { roomId, playerName } = req.params;
+  const room = rooms[roomId];
+  
+  if (!room) {
+    return res.json({ canRejoin: false, reason: "room-not-found" });
+  }
+  
+  // Check if the player is the original host (room creator)
+  const isOriginalHost = room.host.toLowerCase() === playerName.toLowerCase();
+  
+  // Check if the player is currently in the room
+  const currentlyInRoom = Object.values(room.players).some(
+    (p) => p.name.toLowerCase() === playerName.toLowerCase()
+  );
+  
+  // Allow rejoining if:
+  // 1. They're currently in the room, OR
+  // 2. They're the original room creator, OR
+  // 3. The room hasn't started yet (allow anyone who was previously in)
+  const canRejoin = currentlyInRoom || isOriginalHost || !room.hasStarted;
+  
+  return res.json({ 
+    canRejoin,
+    isOriginalHost,
+    currentlyInRoom,
+    roomExists: true,
+    hasStarted: room.hasStarted
+  });
 });
 
 // Cleanup inactive rooms (rooms with no players)
@@ -136,45 +169,63 @@ io.on("connection", (socket) => {
       return socket.emit("error", "Room does not exist");
     }
 
+    // If the game has already started, only allow rejoining if the player was already in the room
+    if (room.hasStarted) {
+      const existingPlayer = Object.values(room.players).find(
+        p => p.name.toLowerCase() === playerName.toLowerCase()
+      );
+      const isOriginalHost = room.host.toLowerCase() === playerName.toLowerCase();
+      
+      if (!existingPlayer && !isOriginalHost) {
+        return socket.emit("error", "Game has already started");
+      }
+      
+      // If game started and they're rejoining, send them to game page
+      if (existingPlayer || isOriginalHost) {
+        socket.emit("gameStarted");
+        return;
+      }
+    }
+
     // Check if player name already exists in the room
     const existingPlayerEntry = Object.entries(room.players).find(
       ([socketId, player]) =>
         player.name.toLowerCase() === playerName.toLowerCase()
     );
 
+    // We'll handle reconnections later, for now just check for immediate same-socket scenarios
     if (existingPlayerEntry) {
       const [oldSocketId, playerData] = existingPlayerEntry;
 
-      // If it's the same socket, just update the room
+      // If it's the same socket, just mark as online and update room
       if (oldSocketId === socket.id) {
         cancelRoomCleanup(roomId);
-        io.to(roomId).emit("roomUpdate", {
-          players: room.players,
-          hostId: room.hostId,
-        });
-        // Send individual response with isHost status
-        socket.emit("roomUpdate", {
-          players: room.players,
-          hostId: room.hostId,
-          isHost: socket.id === room.hostId,
+        room.players[socket.id].online = true;
+        
+        // Send room update to all online players
+        Object.keys(room.players).forEach(playerSocketId => {
+          const player = room.players[playerSocketId];
+          if (player.online) {
+            const playerIsHost = playerSocketId === room.hostId;
+            io.to(playerSocketId).emit("roomUpdate", {
+              players: room.players,
+              hostId: room.hostId,
+              isHost: playerIsHost,
+            });
+          }
         });
         return;
       }
-
-      // If it's a different socket but same name, this is likely a reconnection
-      // Remove the old socket entry and let them rejoin with new socket
-      console.log(
-        `🔄 Player ${playerName} reconnecting with new socket ID: ${socket.id} (was: ${oldSocketId})`
-      );
-      delete room.players[oldSocketId];
-
-      // If the old socket was the host, transfer host to new socket
-      if (room.hostId === oldSocketId) {
-        room.hostId = socket.id;
-      }
     }
 
-    // make the first player to join the room the host
+    // Check if this player is the original room creator (host) rejoining
+    // This handles the case where the original host left and rejoins later
+    if (playerName === room.host && room.hostId !== socket.id) {
+      room.hostId = socket.id;
+      console.log(`👑 Original room creator ${playerName} rejoined and regained host status`);
+    }
+
+    // make the first player to join the room the host (only if no host exists)
     // You have to use Object.keys to get the length of the players object
     // since players is an object, not an array, it doesn't have a length property.
     // Object.keys grabs the keys of the object and returns them as an array and array has a length property.
@@ -183,7 +234,33 @@ io.on("connection", (socket) => {
     }
 
     socket.join(roomId);
-    room.players[socket.id] = { name: playerName, score: 0 };
+    
+    // Check if this player already exists in the room (by name)
+    const existingPlayer = Object.entries(room.players).find(
+      ([socketId, player]) => player.name.toLowerCase() === playerName.toLowerCase()
+    );
+    
+    if (existingPlayer) {
+      const [oldSocketId, playerData] = existingPlayer;
+      if (oldSocketId !== socket.id) {
+        // This is a reconnection with a new socket ID
+        console.log(`🔄 Player ${playerName} reconnecting: ${oldSocketId} -> ${socket.id}`);
+        delete room.players[oldSocketId];
+        room.players[socket.id] = { ...playerData, online: true };
+        
+        // If the old socket was the host, transfer host to new socket
+        if (room.hostId === oldSocketId) {
+          room.hostId = socket.id;
+          console.log(`👑 Host ${playerName} reconnected with new socket ID`);
+        }
+      } else {
+        // Same socket, just mark as online
+        room.players[socket.id].online = true;
+      }
+    } else {
+      // Completely new player
+      room.players[socket.id] = { name: playerName, score: 0, online: true };
+    }
 
     // Cancel any pending cleanup for this room since someone joined
     cancelRoomCleanup(roomId);
@@ -193,11 +270,27 @@ io.on("connection", (socket) => {
       `📊 Player ${playerName} (${socket.id}) joined room ${roomId}. isHost: ${isHost}`
     );
     console.log(`📊 Room ${roomId} hostId: ${room.hostId}`);
+    console.log(`📊 Room ${roomId} players:`, Object.keys(room.players).map(id => ({
+      id,
+      name: room.players[id].name,
+      online: room.players[id].online
+    })));
 
-    io.to(roomId).emit("roomUpdate", {
-      players: room.players,
-      hostId: room.hostId,
-      isHost: isHost,
+    // Send room update to all players, each with their own isHost status
+    Object.keys(room.players).forEach(socketId => {
+      const player = room.players[socketId];
+      // Only send to online players
+      if (player.online) {
+        const playerIsHost = socketId === room.hostId;
+        console.log(`📤 Sending roomUpdate to ${player.name} (${socketId}), isHost: ${playerIsHost}`);
+        io.to(socketId).emit("roomUpdate", {
+          players: room.players,
+          hostId: room.hostId,
+          isHost: playerIsHost,
+        });
+      } else {
+        console.log(`📴 Skipping offline player ${player.name} (${socketId})`);
+      }
     });
   });
 
@@ -212,34 +305,102 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("startGame", ({ roomId }) => {
+    const room = rooms[roomId];
+    
+    if (!room) {
+      return socket.emit("error", "Room does not exist");
+    }
+    
+    // Only allow host to start the game
+    if (socket.id !== room.hostId) {
+      return socket.emit("error", "Only the host can start the game");
+    }
+    
+    // Mark the game as started
+    room.hasStarted = true;
+    
+    console.log(`🎮 Game started in room ${roomId} by host ${socket.id}`);
+    
+    // Notify all players in the room that the game has started
+    io.to(roomId).emit("gameStarted");
+  });
+
   socket.on("disconnect", () => {
     console.log("🔌 Client disconnected:", socket.id);
 
-    // Find and remove player from all rooms
+    // Don't remove players on disconnect - they might rejoin
+    // Instead, mark them as offline and keep their spot in the room
     Object.keys(rooms).forEach((roomId) => {
       const room = rooms[roomId];
       if (room.players[socket.id]) {
-        delete room.players[socket.id];
+        // Mark player as offline but keep them in the room
+        room.players[socket.id].online = false;
+        console.log(`📴 Player ${room.players[socket.id].name} went offline in room ${roomId}`);
 
-        // If this was the host, assign a new host
-        if (room.hostId === socket.id) {
-          const remainingPlayers = Object.keys(room.players);
-          room.hostId =
-            remainingPlayers.length > 0 ? remainingPlayers[0] : null;
-        }
-
-        // Notify remaining players
-        io.to(roomId).emit("roomUpdate", {
-          players: room.players,
-          hostId: room.hostId,
+        // If this was the host going offline, don't reassign host yet
+        // They might come back. Only reassign if they explicitly leave.
+        
+        // Notify remaining online players about the disconnection
+        Object.keys(room.players).forEach(playerSocketId => {
+          const player = room.players[playerSocketId];
+          if (player.online) {
+            const playerIsHost = playerSocketId === room.hostId;
+            io.to(playerSocketId).emit("roomUpdate", {
+              players: room.players,
+              hostId: room.hostId,
+              isHost: playerIsHost,
+            });
+          }
         });
 
-        // Schedule cleanup for empty rooms with grace period
-        if (Object.keys(room.players).length === 0) {
-          scheduleRoomCleanup(roomId, rooms);
-        }
+        // Note: We don't schedule room cleanup here anymore since players are still in the room
       }
     });
+  });
+
+  // Handle explicit leave room (when user clicks Leave button)
+  socket.on("leaveRoom", ({ roomId }, callback) => {
+    console.log(`🚪 Player explicitly leaving room ${roomId}`);
+    
+    const room = rooms[roomId];
+    if (room && room.players[socket.id]) {
+      const playerName = room.players[socket.id].name;
+      console.log(`🚪 Removing ${playerName} from room ${roomId}`);
+      
+      // Actually remove the player from the room
+      delete room.players[socket.id];
+
+      // If this was the host, assign a new host from remaining players
+      if (room.hostId === socket.id) {
+        const remainingPlayers = Object.keys(room.players);
+        room.hostId = remainingPlayers.length > 0 ? remainingPlayers[0] : null;
+        console.log(`👑 Host left, new host: ${room.hostId}`);
+      }
+
+      // Notify remaining players with individual isHost status
+      Object.keys(room.players).forEach(playerSocketId => {
+        const player = room.players[playerSocketId];
+        if (player.online) {
+          const playerIsHost = playerSocketId === room.hostId;
+          io.to(playerSocketId).emit("roomUpdate", {
+            players: room.players,
+            hostId: room.hostId,
+            isHost: playerIsHost,
+          });
+        }
+      });
+
+      // Schedule cleanup for empty rooms with grace period
+      if (Object.keys(room.players).length === 0) {
+        scheduleRoomCleanup(roomId, rooms);
+      }
+    }
+    
+    // Send acknowledgment to client that leave was processed
+    if (callback) {
+      callback();
+    }
   });
 });
 

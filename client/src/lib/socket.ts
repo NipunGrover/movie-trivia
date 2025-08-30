@@ -48,11 +48,15 @@ const disconnect = () => {
 // Only disconnect when explicitly leaving the game/room
 const leaveRoom = () => {
   if (socket && roomId) {
-    // Emit leave room event to server
-    socket.emit("leaveRoom", { roomId });
-    console.log(`Left room: ${roomId}`);
+    // Emit leave room event to server with acknowledgment
+    socket.emit("leaveRoom", { roomId }, () => {
+      // Server has processed the leave event, now we can disconnect
+      console.log(`Left room: ${roomId}`);
+      disconnect();
+    });
+  } else {
+    disconnect();
   }
-  disconnect();
 };
 
 export { connect, joinRoom, getSocket, getRoomId, disconnect, leaveRoom };

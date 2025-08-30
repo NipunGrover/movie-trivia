@@ -6,7 +6,7 @@ import { connect, getSocket, leaveRoom } from "@/lib/socket";
 import { usePlayerStore } from "@/stores/usePlayerStore";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { LogOut, Users } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 const EMPTY_COUNT = 0;
@@ -63,6 +63,23 @@ function WaitingRoomPage() {
   const clearPlayerName = usePlayerStore(s => s.clearPlayerName);
   const { roomId } = useParams({ strict: false });
   const navigate = useNavigate();
+
+  // Track if current user is the host
+  const [isHost, setIsHost] = useState(false);
+
+  /**
+   * Handle start game action (host only).
+   */
+  function handleStartGame() {
+    console.log("[WaitingRoom] Start game button clicked");
+    const socket = getSocket();
+    if (socket && roomId) {
+      console.log("[WaitingRoom] Emitting startGame event");
+      socket.emit("startGame", { roomId });
+      // Navigate to game page
+      void navigate({ to: `/game/${roomId}` });
+    }
+  }
 
   // User clicks Leave button (explicit leave – clear storage and player state)
 
@@ -161,24 +178,49 @@ function WaitingRoomPage() {
      */
     function handleRoomUpdate(data: {
       isHost?: boolean;
-      players: Record<string, { name: string; score: number }>;
+      players: Record<string, { name: string; online: boolean; score: number }>;
     }) {
       console.log("[WaitingRoom] roomUpdate payload", data);
       console.log("🔄 Am I host?", data.isHost);
-      const names = Object.values(data.players).map(p => p.name);
+      console.log("🔄 Current isHost state:", isHost);
+      const playersList = Object.values(data.players);
+      const names = playersList.map(p => p.name);
       console.log("[WaitingRoom] Player list", names);
+      console.log(
+        "[WaitingRoom] Player status",
+        playersList.map(p => `${p.name}: ${p.online ? "online" : "offline"}`)
+      );
       setPlayers(names);
+
+      // Update host status if provided
+      if (data.isHost !== undefined) {
+        console.log("🔄 Setting isHost to:", data.isHost);
+        setIsHost(data.isHost);
+      }
     }
 
     socket.on("roomUpdate", handleRoomUpdate);
+
+    // Listen for game start event
+    socket.on("gameStarted", () => {
+      console.log("[WaitingRoom] Game started, navigating to game page");
+      void navigate({ to: `/game/${roomId}` });
+    });
+
     console.log("[WaitingRoom] Emitting joinRoom", { playerName, roomId });
     socket.emit("joinRoom", { playerName, roomId });
 
     return () => {
-      console.log("[WaitingRoom] Cleanup: removing roomUpdate listener");
+      console.log("[WaitingRoom] Cleanup: removing listeners");
       socket.off("roomUpdate", handleRoomUpdate);
+      socket.off("gameStarted");
     };
   }, [roomId, setPlayers, playerName, navigate]);
+
+  // Debug effect to monitor isHost changes
+  useEffect(() => {
+    console.log("[WaitingRoom] isHost state changed:", isHost);
+  }, [isHost]);
 
   return (
     <div className="animate-gradient-bg min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-blue-500 bg-[length:400%_400%]">
@@ -188,6 +230,9 @@ function WaitingRoomPage() {
           <div className="text-center">
             <h1 className="text-header">Waiting Room</h1>
             <p className="text-sm text-white/80">Room ID: {roomId}</p>
+            {isHost ? (
+              <p className="text-white-100 text-xs">👑 You are the host</p>
+            ) : null}
           </div>
           <Button
             className="border-red-300 text-red-300 hover:bg-red-300 hover:text-red-900"
@@ -223,6 +268,18 @@ function WaitingRoomPage() {
             </div>
           )}
         </div>
+
+        {/* Start Game Button (only for host) */}
+        {isHost && players.length > 1 ? (
+          <div className="text-center">
+            <Button
+              className="border-green-300 text-green-300 hover:bg-green-300 hover:text-green-900"
+              onClick={handleStartGame}
+              variant="outline">
+              Start Game
+            </Button>
+          </div>
+        ) : null}
 
         {/* Status footer */}
         <div className="text-center text-white/70">
