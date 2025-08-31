@@ -115,9 +115,6 @@ app.get("/can-rejoin/:roomId/:playerName", (req, res) => {
     return res.json({ canRejoin: false, reason: "room-not-found" });
   }
 
-  // Check if the player is the original host (room creator)
-  const isOriginalHost = room.host.toLowerCase() === playerName.toLowerCase();
-
   // Check if the player is currently in the room
   const currentlyInRoom = Object.values(room.players).some(
     (p) => p.name.toLowerCase() === playerName.toLowerCase()
@@ -125,13 +122,11 @@ app.get("/can-rejoin/:roomId/:playerName", (req, res) => {
 
   // Allow rejoining if:
   // 1. They're currently in the room, OR
-  // 2. They're the original room creator, OR
-  // 3. The room hasn't started yet (allow anyone who was previously in)
-  const canRejoin = currentlyInRoom || isOriginalHost || !room.hasStarted;
+  // 2. The room hasn't started yet (allow anyone who was previously in)
+  const canRejoin = currentlyInRoom || !room.hasStarted;
 
   return res.json({
     canRejoin,
-    isOriginalHost,
     currentlyInRoom,
     roomExists: true,
     hasStarted: room.hasStarted,
@@ -217,15 +212,6 @@ io.on("connection", (socket) => {
         });
         return;
       }
-    }
-
-    // Check if this player is the original room creator (host) rejoining
-    // This handles the case where the original host left and rejoins later
-    if (playerName === room.host && room.hostId !== socket.id) {
-      room.hostId = socket.id;
-      console.log(
-        `👑 Original room creator ${playerName} rejoined and regained host status`
-      );
     }
 
     // make the first player to join the room the host (only if no host exists)
