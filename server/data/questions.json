@@ -1,0 +1,127 @@
+{
+  "categories": {
+    "general": [
+      {
+        "id": 1,
+        "question": "What is the highest-grossing film of all time?",
+        "options": [
+          "Avatar",
+          "Avengers: Endgame",
+          "Titanic",
+          "Star Wars: The Force Awakens"
+        ],
+        "correctAnswer": 1,
+        "difficulty": "medium",
+        "explanation": "Avengers: Endgame briefly held the record before Avatar reclaimed it with its re-release."
+      },
+      {
+        "id": 2,
+        "question": "Which movie won the Academy Award for Best Picture in 2020?",
+        "options": [
+          "1917",
+          "Joker",
+          "Parasite",
+          "Once Upon a Time in Hollywood"
+        ],
+        "correctAnswer": 2,
+        "difficulty": "hard",
+        "explanation": "Parasite made history as the first non-English language film to win Best Picture."
+      },
+      {
+        "id": 3,
+        "question": "Who directed the movie 'Jaws'?",
+        "options": [
+          "George Lucas",
+          "Steven Spielberg",
+          "Martin Scorsese",
+          "Francis Ford Coppola"
+        ],
+        "correctAnswer": 1,
+        "difficulty": "easy",
+        "explanation": "Steven Spielberg directed Jaws in 1975, launching his career as a blockbuster filmmaker."
+      },
+      {
+        "id": 4,
+        "question": "In which year was the first 'Iron Man' movie released?",
+        "options": ["2006", "2007", "2008", "2009"],
+        "correctAnswer": 2,
+        "difficulty": "medium",
+        "explanation": "Iron Man was released in 2008, launching the Marvel Cinematic Universe."
+      },
+      {
+        "id": 5,
+        "question": "What is the name of the coffee shop in the TV show 'Friends'?",
+        "options": [
+          "Central Perk",
+          "Coffee Central",
+          "The Daily Grind",
+          "Bean There"
+        ],
+        "correctAnswer": 0,
+        "difficulty": "easy",
+        "explanation": "Central Perk was the main hangout spot for the Friends characters."
+      },
+      {
+        "id": 6,
+        "question": "Which actor played Neo in 'The Matrix'?",
+        "options": ["Will Smith", "Keanu Reeves", "Brad Pitt", "Tom Cruise"],
+        "correctAnswer": 1,
+        "difficulty": "easy",
+        "explanation": "Keanu Reeves portrayed Neo in The Matrix trilogy."
+      },
+      {
+        "id": 7,
+        "question": "What movie features the quote 'Here's looking at you, kid'?",
+        "options": [
+          "Gone with the Wind",
+          "Casablanca",
+          "The Maltese Falcon",
+          "Citizen Kane"
+        ],
+        "correctAnswer": 1,
+        "difficulty": "medium",
+        "explanation": "This famous line was spoken by Humphrey Bogart in Casablanca."
+      },
+      {
+        "id": 8,
+        "question": "Who composed the music for 'Star Wars'?",
+        "options": [
+          "Hans Zimmer",
+          "John Williams",
+          "Danny Elfman",
+          "James Horner"
+        ],
+        "correctAnswer": 1,
+        "difficulty": "medium",
+        "explanation": "John Williams composed the iconic Star Wars score."
+      },
+      {
+        "id": 9,
+        "question": "Which Disney movie was the first full-length animated feature?",
+        "options": [
+          "Pinocchio",
+          "Snow White and the Seven Dwarfs",
+          "Bambi",
+          "Cinderella"
+        ],
+        "correctAnswer": 1,
+        "difficulty": "hard",
+        "explanation": "Snow White and the Seven Dwarfs was Disney's first full-length animated feature film in 1937."
+      },
+      {
+        "id": 10,
+        "question": "In 'The Lord of the Rings', what is the name of Gandalf's horse?",
+        "options": ["Shadowfax", "Rohan", "Brego", "Asfaloth"],
+        "correctAnswer": 0,
+        "difficulty": "hard",
+        "explanation": "Shadowfax is Gandalf's horse, known as the lord of all horses."
+      }
+    ]
+  },
+  "settings": {
+    "questionsPerGame": 5,
+    "timePerQuestion": 30,
+    "pointsCorrect": 100,
+    "pointsIncorrect": 0
+  }
+}

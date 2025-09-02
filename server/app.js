@@ -3,6 +3,8 @@ import http from "http";
 import { Server } from "socket.io";
 import cors from "cors";
 import { nanoid } from "nanoid"; // Importing nanoid to generate unique room IDs
+import fs from "fs";
+import path from "path";
 import {
   scheduleRoomCleanup,
   cancelRoomCleanup,
@@ -17,6 +19,29 @@ const io = new Server(server, {
 
 app.use(cors({ origin: ["http://localhost:5173", "http://localhost:5174"] }));
 app.use(express.json());
+
+// Load questions from JSON file
+let questionsData;
+try {
+  const questionsPath = path.join(process.cwd(), "data", "questions.json");
+  questionsData = JSON.parse(fs.readFileSync(questionsPath, "utf8"));
+} catch (error) {
+  console.error("Error loading questions:", error);
+  questionsData = {
+    categories: { general: [] },
+    settings: { questionsPerGame: 5, timePerQuestion: 30 },
+  };
+}
+
+// Function to get random questions
+function getRandomQuestions(count = 5, category = "general") {
+  const questions = questionsData.categories[category] || [];
+  console.log(`📚 Available questions in ${category}:`, questions.length);
+  const shuffled = [...questions].sort(() => 0.5 - Math.random());
+  const selected = shuffled.slice(0, Math.min(count, shuffled.length));
+  console.log(`🎯 Selected ${selected.length} questions for game`);
+  return selected;
+}
 
 // In-memory rooms store
 const rooms = {};
@@ -317,10 +342,78 @@ io.on("connection", (socket) => {
     // Mark the game as started
     room.hasStarted = true;
 
+    // Initialize game state
+    room.gameState = {
+      questions: getRandomQuestions(questionsData.settings.questionsPerGame),
+      currentQuestionIndex: 0,
+      questionStartTime: null,
+      answers: {}, // Store player answers for current question
+      isWaitingForAnswers: false,
+    };
+
     console.log(`🎮 Game started in room ${roomId} by host ${socket.id}`);
+    console.log(
+      `📊 Game will have ${room.gameState.questions.length} questions`
+    );
 
     // Notify all players in the room that the game has started
     io.to(roomId).emit("gameStarted");
+
+    // Start the first question after a brief delay
+    setTimeout(() => {
+      startNextQuestion(roomId);
+    }, 2000);
+  });
+
+  // Handle player answers
+  socket.on("submitAnswer", ({ roomId, answerIndex, timeRemaining }) => {
+    const room = rooms[roomId];
+    if (!room || !room.gameState || !room.players[socket.id]) {
+      return;
+    }
+
+    const { gameState } = room;
+    const currentQuestion = gameState.questions[gameState.currentQuestionIndex];
+
+    if (!currentQuestion || !gameState.isWaitingForAnswers) {
+      return socket.emit("error", "No active question");
+    }
+
+    // Check if player already answered
+    if (gameState.answers[socket.id]) {
+      return socket.emit("error", "Answer already submitted for this question");
+    }
+
+    // Store the answer
+    gameState.answers[socket.id] = {
+      answerIndex,
+      timeRemaining,
+      isCorrect: answerIndex === currentQuestion.correctAnswer,
+    };
+
+    const playerName = room.players[socket.id].name;
+    console.log(
+      `📝 ${playerName} answered question ${
+        gameState.currentQuestionIndex + 1
+      }: ${answerIndex}`
+    );
+
+    // Send confirmation to the player
+    socket.emit("answerSubmitted", {
+      isCorrect: answerIndex === currentQuestion.correctAnswer,
+      answerIndex: answerIndex,
+    });
+
+    // Check if all online players have answered
+    const onlinePlayers = Object.keys(room.players).filter(
+      (id) => room.players[id].online
+    );
+    const answeredPlayers = Object.keys(gameState.answers);
+
+    if (answeredPlayers.length === onlinePlayers.length) {
+      // All players answered, show results immediately
+      showQuestionResults(roomId);
+    }
   });
 
   socket.on("disconnect", () => {
@@ -404,6 +497,128 @@ io.on("connection", (socket) => {
     }
   });
 });
+
+// Function to start the next question
+function startNextQuestion(roomId) {
+  const room = rooms[roomId];
+  if (!room || !room.gameState) return;
+
+  const { gameState } = room;
+
+  console.log(
+    `🔄 Starting question ${gameState.currentQuestionIndex + 1} of ${
+      gameState.questions.length
+    }`
+  );
+
+  if (gameState.currentQuestionIndex >= gameState.questions.length) {
+    // Game over, show final results
+    console.log(`🏁 All questions completed, ending game`);
+    endGame(roomId);
+    return;
+  }
+
+  const currentQuestion = gameState.questions[gameState.currentQuestionIndex];
+  gameState.questionStartTime = Date.now();
+  gameState.answers = {};
+  gameState.isWaitingForAnswers = true;
+
+  // Send question to all players (without the correct answer)
+  const questionForClient = {
+    id: currentQuestion.id,
+    question: currentQuestion.question,
+    options: currentQuestion.options,
+    questionNumber: gameState.currentQuestionIndex + 1,
+    totalQuestions: gameState.questions.length,
+    timeLimit: questionsData.settings.timePerQuestion,
+  };
+
+  io.to(roomId).emit("newQuestion", questionForClient);
+
+  // Set timer for question
+  setTimeout(() => {
+    if (room.gameState && room.gameState.isWaitingForAnswers) {
+      showQuestionResults(roomId);
+    }
+  }, questionsData.settings.timePerQuestion * 1000);
+}
+
+// Function to show question results and update scores
+function showQuestionResults(roomId) {
+  const room = rooms[roomId];
+  if (!room || !room.gameState) return;
+
+  const { gameState } = room;
+  const currentQuestion = gameState.questions[gameState.currentQuestionIndex];
+  gameState.isWaitingForAnswers = false;
+
+  // Calculate scores and prepare results
+  const results = {};
+  Object.keys(gameState.answers).forEach((socketId) => {
+    const answer = gameState.answers[socketId];
+    if (answer.isCorrect) {
+      // Award points based on time remaining (bonus for faster answers)
+      const timeBonus = Math.floor(
+        (answer.timeRemaining / questionsData.settings.timePerQuestion) * 50
+      );
+      const points = questionsData.settings.pointsCorrect + timeBonus;
+      room.players[socketId].score += points;
+      results[socketId] = { correct: true, points };
+    } else {
+      results[socketId] = { correct: false, points: 0 };
+    }
+  });
+
+  // Send results to all players
+  io.to(roomId).emit("questionResult", {
+    correctAnswer: currentQuestion.correctAnswer,
+    explanation: currentQuestion.explanation || null,
+    results,
+    scores: Object.fromEntries(
+      Object.entries(room.players).map(([id, player]) => [
+        id,
+        { name: player.name, score: player.score },
+      ])
+    ),
+  });
+
+  // Move to next question after showing results
+  setTimeout(() => {
+    gameState.currentQuestionIndex++;
+    startNextQuestion(roomId);
+  }, 5000); // Show results for 5 seconds
+}
+
+// Function to end the game
+function endGame(roomId) {
+  const room = rooms[roomId];
+  if (!room) return;
+
+  // Calculate final rankings
+  const finalScores = Object.entries(room.players)
+    .map(([socketId, player]) => ({
+      name: player.name,
+      score: player.score,
+      socketId,
+    }))
+    .sort((a, b) => b.score - a.score);
+
+  io.to(roomId).emit("gameEnded", {
+    finalScores,
+    winner: finalScores[0],
+  });
+
+  // Reset game state
+  room.hasStarted = false;
+  room.gameState = null;
+
+  // Reset all player scores
+  Object.keys(room.players).forEach((socketId) => {
+    room.players[socketId].score = 0;
+  });
+
+  console.log(`🏁 Game ended in room ${roomId}`);
+}
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
