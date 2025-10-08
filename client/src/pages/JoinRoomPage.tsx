@@ -99,18 +99,18 @@ export default function JoinRoomPage() {
   return (
     <div className="">
       {/* background */}
-      <div className="from-room-purple to-room-cyan relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-br via-purple-700 p-4 text-center">
+      <div className="from-room-purple to-room-cyan relative flex min-h-dvh items-center justify-center overflow-hidden bg-gradient-to-br via-purple-700 px-3 text-center">
         {/* upper + lower part */}
-        <div className="xs:gap-y-20 lg:gap-y020 flex w-full flex-col items-center justify-center gap-y-6">
+        <div className="flex w-full max-w-[720px] flex-col items-center justify-center gap-y-4 py-2">
           {/* Upper part */}
           <div className="flex flex-col items-center justify-center text-center">
             {/* Title */}
-            <div className="align-center flex gap-2">
-              <Gamepad2Icon className="text-room-cyan h-8 w-8 -translate-y-1 duration-200 ease-in-out hover:scale-115" />
-              <span className="text-header">Join Room</span>
-              <Sparkles className="text-room-cyan h-8 w-8 -translate-y-1 duration-200 ease-in-out hover:scale-115" />
+            <div className="align-center flex items-center gap-2">
+              <Gamepad2Icon className="text-room-cyan h-6 w-6 -translate-y-0.5 duration-200 ease-in-out" />
+              <span className="text-2xl font-bold text-white">Join Room</span>
+              <Sparkles className="text-room-cyan h-6 w-6 -translate-y-0.5 duration-200 ease-in-out" />
             </div>
-            <span>
+            <span className="text-sm opacity-90">
               Enter a room code and join the dungeons of Skibidi Rizzlers
             </span>
           </div>
@@ -118,7 +118,7 @@ export default function JoinRoomPage() {
           {/* Lower part */}
           {/* Blurred card  */}
           <Card
-            className="animate-fade-in relative h-auto w-80 items-center border-white/20 bg-white/10 shadow-2xl backdrop-blur-md transition-all duration-300"
+            className="animate-fade-in relative h-auto w-[22rem] items-center border-white/20 bg-white/10 shadow-2xl backdrop-blur-md transition-all duration-300"
             onMouseEnter={() => {
               setCardHovered(true);
             }}
@@ -186,3 +186,5 @@ export default function JoinRoomPage() {
     </div>
   );
 }
+
+// for pr
